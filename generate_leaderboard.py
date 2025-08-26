@@ -102,7 +102,7 @@ async def main():
             logger.info("Live leaderboard ranks updated.")
         
         history_rank_response = await asyncio.to_thread(
-            supabase.rpc('update_leaderboard_history_ranks', {}).execute
+            supabase.rpc('update_leaderboard_history_ranks', {'snapshot_ts': snapshot_time_iso}).execute
         )
         if hasattr(history_rank_response, 'status_code') and history_rank_response.status_code == 204:
             logger.info("Leaderboard history ranks updated for the current snapshot.")
