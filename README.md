@@ -44,4 +44,4 @@ Sistema de rastreamento de engajamento para embaixadores YELLOW com pipeline aut
 
 ## 🔧 Dependências
 
-Ver `config/requirements.txt` para lista completa de pacotes Python.
+Ver `config/requirements.txt` para lista completa de pacotes Python. Versão Supabase
