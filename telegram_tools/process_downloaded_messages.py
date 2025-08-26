@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 SCORING_BONUS_MULTIPLIER = float(os.getenv("SCORING_BONUS_MULTIPLIER", 1.25))
 
-DRY_RUN = True
+DRY_RUN = False
 
 BASE_DIR = Path("data")
 SCORING_DIR = BASE_DIR / "scoring_group"
