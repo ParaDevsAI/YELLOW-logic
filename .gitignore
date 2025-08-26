@@ -24,4 +24,13 @@ coverage.xml
 .pytest_cache/
 .hypothesis/
 data/
-telegram_tools/*.session 
+telegram_tools/*.session
+
+# Arquivos da VPS (não enviar para GitHub Actions)
+bot_vps.py
+registration_handler.py
+twitter_client.py
+message_tracker.py
+tweet_link_tracker.py
+bot.py
+test_telegram_raw.py 

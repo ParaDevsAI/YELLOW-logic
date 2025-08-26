@@ -46,18 +46,19 @@ def check_if_thread_via_api(client: httpx.Client, api_key: str, tweet_id: str) -
         logger.error(f" -> Ocorreu um erro inesperado ao processar o tweet {tweet_id}: {e}")
         return None
 
-def main():
+async def main():
     logger.info("--- Iniciando Script de Identificação de Threads ---")
     load_dotenv()
 
     api_key = os.getenv("TWITTER_API_KEY")
     if not api_key:
         logger.critical("TWITTER_API_KEY não encontrada nas variáveis de ambiente. Abortando.")
-        return
+        return {'threads_identified': 0}
 
     supabase = initialize_supabase_client()
     if not supabase:
-        return
+        logger.error("Falha ao conectar com Supabase")
+        return {'threads_identified': 0}
 
     logger.info("Buscando tweets recentes que ainda não foram verificados...")
     
@@ -67,11 +68,11 @@ def main():
         response = supabase.table("tweets").select("tweet_id").eq('is_thread_checked', "false").gte('createdat', three_days_ago.isoformat()).execute()
     except Exception as e:
         logger.critical(f"Falha crítica ao buscar tweets do Supabase: {e}")
-        return
+        return {'threads_identified': 0}
 
     if not response.data:
         logger.info("Nenhum tweet não verificado encontrado.")
-        return
+        return {'threads_identified': 0}
 
     logger.info(f"Encontrados {len(response.data)} tweets para verificar.")
 
@@ -114,4 +115,5 @@ def main():
     return {'threads_identified': threads_identified}
 
 if __name__ == "__main__":
-    main() 
+    import asyncio
+    asyncio.run(main()) 

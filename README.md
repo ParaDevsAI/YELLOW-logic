@@ -1,50 +1,47 @@
-# Yellow Engagement Tracker
+# YELLOW Dashboard - Engagement Tracker
 
-Pipeline automatizado para rastreamento de engajamento de embaixadores.
+Sistema de rastreamento de engajamento para embaixadores YELLOW com pipeline automatizado.
 
-## Estrutura
+## 🏗️ Estrutura do Projeto
 
-```
-YELLOW/
-├── yellow_pipeline.py          # Pipeline principal
-├── author_manager.py           # Cliente Supabase
-├── cross_engagement_tracker.py # Rastreador de engajamentos
-├── generate_leaderboard.py     # Gerador de leaderboard
-├── telegram_tools/
-│   ├── thread_identifier.py   # Identificador de threads
-│   └── process_downloaded_messages.py
-├── config/
-│   └── requirements.txt        # Dependências
-└── .github/workflows/
-    └── scheduled_jobs.yml     # GitHub Actions
-```
+### **GitHub Actions (Pipeline de Dados)**
+- `yellow_pipeline.py` - Pipeline principal que executa diariamente
+- `author_manager.py` - Gerenciamento de clientes Supabase
+- `cross_engagement_tracker.py` - Rastreamento de engajamentos cruzados
+- `generate_leaderboard.py` - Geração de leaderboards
+- `telegram_tools/` - Ferramentas para processamento de mensagens
 
-## Configuração
+### **VPS (Bot Telegram)**
+- `bot_vps.py` - Bot principal para VPS
+- `registration_handler.py` - Handler de registro de usuários
+- `twitter_client.py` - Cliente da API Twitter
+- `message_tracker.py` - Rastreamento de mensagens
+- `tweet_link_tracker.py` - Rastreamento de links de tweets
 
-1. Configure as variáveis de ambiente no arquivo `.env`:
-```
-TELEGRAM_API_ID=your_api_id
-TELEGRAM_API_HASH=your_api_hash
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-SCORING_GROUP_ID=-1001581599914
-TWEETS_GROUP_ID=-1002330680602
-TELEGRAM_SESSION_NAME=new_one
-TWITTER_API_KEY=your_twitter_api_key
-```
+## 🚀 Configuração
 
-2. Instale as dependências:
-```bash
-pip install -r config/requirements.txt
-```
+### GitHub Actions
+1. Configure as secrets no repositório:
+   - `SUPABASE_URL`
+   - `SUPABASE_KEY`
+   - `TELEGRAM_API_ID`
+   - `TELEGRAM_API_HASH`
+   - `TWITTER_API_KEY`
 
-3. Execute o pipeline:
-```bash
-python yellow_pipeline.py
-```
+2. O pipeline executa automaticamente às 02:00 UTC diariamente
 
-## GitHub Actions
+### VPS
+1. Instale as dependências: `pip install -r config/requirements.txt`
+2. Configure o arquivo `.env` com as variáveis necessárias
+3. Execute: `python bot_vps.py`
 
-O pipeline executa automaticamente todos os dias às 02:00 UTC via GitHub Actions.
+## 📊 Funcionalidades
 
-Configure os secrets necessários no repositório para execução automática.
+- **Pipeline Diário**: Download de mensagens Telegram, processamento de atividades, rastreamento de engajamentos
+- **Bot de Registro**: Sistema de cadastro de embaixadores via Telegram
+- **Leaderboard**: Cálculo automático de pontuações e rankings
+- **Cross Engagement**: Monitoramento de interações entre embaixadores
+
+## 🔧 Dependências
+
+Ver `config/requirements.txt` para lista completa de pacotes Python.
