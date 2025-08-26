@@ -22,7 +22,7 @@ async def main():
     try:
         logger.info("Calling RPC 'calculate_leaderboard' on Supabase...")
         response = await asyncio.to_thread(
-            supabase.rpc('calculate_leaderboard').execute
+            supabase.rpc('calculate_leaderboard', {}).execute
         )
         
         calculated_data = response.data
@@ -94,7 +94,7 @@ async def main():
         logger.info("Updating ranks by calling RPCs...")
         
         rank_response = await asyncio.to_thread(
-            supabase.rpc('update_leaderboard_ranks').execute
+            supabase.rpc('update_leaderboard_ranks', {}).execute
         )
         if rank_response.status_code == 204:
             logger.info("Live leaderboard ranks updated.")
@@ -102,7 +102,7 @@ async def main():
             logger.error(f"Failed to update live leaderboard ranks: {rank_response.status_code}")
         
         history_rank_response = await asyncio.to_thread(
-            supabase.rpc('update_leaderboard_history_ranks').execute
+            supabase.rpc('update_leaderboard_history_ranks', {}).execute
         )
         if history_rank_response.status_code == 204:
             logger.info("Leaderboard history ranks updated for the current snapshot.")
