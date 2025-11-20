@@ -99,10 +99,16 @@ async def register_author(telegram_user, twitter_data: dict) -> bool:
 
     telegram_name = telegram_user.full_name or telegram_user.username
 
+    # Defensive check: ensure twitter_data contains an id before attempting insert.
+    twitter_id = twitter_data.get('id') if twitter_data else None
+    if not twitter_id:
+        logger.error(f"register_author aborted: missing twitter_id for telegram {telegram_user.id}")
+        return False
+
     author_record = {
         'telegram_id': telegram_user.id,
         'telegram_name': telegram_name,
-        'twitter_id': twitter_data.get('id'),
+        'twitter_id': twitter_id,
         'twitter_username': twitter_data.get('userName'),
         'twitter_name': twitter_data.get('name'),
         'twitter_description': twitter_data.get('description'),

@@ -60,7 +60,10 @@ def main() -> None:
     
     # Inicia o bot
     logger.info("Bot principal iniciado. Todos os recursos estão ativos.")
-    application.run_polling()
+    # Drop pending updates on startup to avoid processing a backlog.
+    # Note: this does not resolve conflicts if another instance is actively
+    # polling or a webhook is set. See troubleshooting notes below.
+    application.run_polling(drop_pending_updates=True)
 
 if __name__ == '__main__':
     main() 
