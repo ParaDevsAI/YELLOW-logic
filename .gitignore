@@ -9,6 +9,7 @@ __pycache__/
 env/
 venv/
 .venv/
+.pythonlibs/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -25,6 +26,8 @@ coverage.xml
 .hypothesis/
 data/
 telegram_tools/*.session
+uv.lock
+pyproject.toml
 
 # Arquivos da VPS (não enviar para GitHub Actions)
 bot_vps.py
