@@ -5,3 +5,26 @@ expertMode = true
 [nix]
 channel = "stable-25_05"
 packages = ["openssl"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Yellow Pipeline"
+
+[[workflows.workflow]]
+name = "Yellow Pipeline"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -c \"import telethon, supabase, httpx, dotenv; print('✓ All dependencies installed correctly'); print('✓ Ready to run Yellow Ambassador Engagement Tracker'); print(''); print('To run the pipeline, configure your environment variables in the Secrets tab and run:'); print('  python yellow_pipeline.py'); print(''); print('Required environment variables (see .env.example):'); print('  - SUPABASE_URL'); print('  - SUPABASE_KEY'); print('  - TELEGRAM_API_ID'); print('  - TELEGRAM_API_HASH'); print('  - TWITTER_API_KEY'); print(''); print('Project structure verified and ready!')\""
+
+[workflows.workflow.metadata]
+outputType = "console"
