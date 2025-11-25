@@ -73,18 +73,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if is_registered:
         await update.message.reply_text(
-            f"Olá {user.first_name}! Você já está registrado no sistema YELLOW. ✅\n\n"
-            "Use o bot normalmente para rastrear seus tweets e ganhar pontos!"
+            f"Hello {user.first_name}! You are already registered in the YELLOW system. ✅\n\n"
+            "Use the bot normally to track your tweets and earn points!"
         )
         return ConversationHandler.END
     
     # Start registration process
     await update.message.reply_text(
-        f"Olá {user.first_name}! 👋\n\n"
-        "Bem-vindo ao sistema YELLOW de rastreamento de engajamento!\n\n"
-        "Para começar, preciso do seu nome de usuário do Twitter (sem o @).\n"
-        "Por exemplo, se seu perfil é @joaosilva, digite apenas: joaosilva\n\n"
-        "Digite seu nome de usuário do Twitter:"
+        f"Hello {user.first_name}! 👋\n\n"
+        "Welcome to the YELLOW engagement tracking system!\n\n"
+        "To get started, I need your Twitter username (without the @).\n"
+        "For example, if your profile is @johnsmith, just type: johnsmith\n\n"
+        "Enter your Twitter username:"
     )
     
     return ASKING_TWITTER_USERNAME
@@ -100,15 +100,15 @@ async def receive_twitter_username(update: Update, context: ContextTypes.DEFAULT
     # Basic validation
     if not re.match(r'^[A-Za-z0-9_]{1,15}$', twitter_username):
         await update.message.reply_text(
-            "❌ Nome de usuário inválido!\n\n"
-            "O nome de usuário do Twitter deve conter apenas letras, números e underscore (_), "
-            "e ter no máximo 15 caracteres.\n\n"
-            "Digite novamente:"
+            "❌ Invalid username!\n\n"
+            "Twitter username must contain only letters, numbers and underscore (_), "
+            "and be no more than 15 characters.\n\n"
+            "Please try again:"
         )
         return ASKING_TWITTER_USERNAME
     
     # Show processing message
-    processing_msg = await update.message.reply_text("🔄 Buscando dados do Twitter...")
+    processing_msg = await update.message.reply_text("🔄 Fetching Twitter data...")
     
     # Fetch real Twitter user data
     twitter_data = await fetch_twitter_user_data(twitter_username)
@@ -116,12 +116,12 @@ async def receive_twitter_username(update: Update, context: ContextTypes.DEFAULT
     if not twitter_data:
         await processing_msg.delete()
         await update.message.reply_text(
-            f"❌ Não foi possível encontrar o usuário @{twitter_username} no Twitter!\n\n"
-            "Verifique se:\n"
-            "• O nome de usuário está correto\n"
-            "• A conta não está privada ou suspensa\n"
-            "• Você digitou apenas o nome de usuário (sem @)\n\n"
-            "Digite novamente:"
+            f"❌ Could not find user @{twitter_username} on Twitter!\n\n"
+            "Please check that:\n"
+            "• The username is correct\n"
+            "• The account is not private or suspended\n"
+            "• You entered only the username (without @)\n\n"
+            "Please try again:"
         )
         return ASKING_TWITTER_USERNAME
     
@@ -133,26 +133,26 @@ async def receive_twitter_username(update: Update, context: ContextTypes.DEFAULT
     if success:
         twitter_name = twitter_data.get('name', twitter_username)
         followers_count = twitter_data.get('followers', 0)
-        verification_status = "✅ Verificado" if twitter_data.get('isBlueVerified') else ""
+        verification_status = "✅ Verified" if twitter_data.get('isBlueVerified') else ""
         
         await update.message.reply_text(
-            f"🎉 Registro concluído com sucesso!\n\n"
+            f"🎉 Registration completed successfully!\n\n"
             f"✅ Telegram: {user.first_name}\n"
             f"✅ Twitter: @{twitter_username}\n"
-            f"📝 Nome: {twitter_name}\n"
-            f"👥 Seguidores: {followers_count:,}\n"
+            f"📝 Name: {twitter_name}\n"
+            f"👥 Followers: {followers_count:,}\n"
             f"{verification_status}\n\n"
-            "Agora você pode começar a usar o bot para rastrear seus tweets!\n"
-            "Compartilhe links de tweets nos grupos YELLOW para ganhar pontos. 🚀",
+            "You can now start using the bot to track your tweets!\n"
+            "Share tweet links in YELLOW groups to earn points. 🚀",
             reply_markup=ReplyKeyboardRemove()
         )
         logger.info(f"Usuário {user.id} (@{twitter_username}) registrado com sucesso.")
     else:
         await update.message.reply_text(
-            "❌ Erro ao registrar usuário!\n\n"
-            "Houve um problema ao salvar seus dados. "
-            "Tente novamente mais tarde ou contate um administrador.\n\n"
-            "Digite /start para tentar novamente."
+            "❌ Error registering user!\n\n"
+            "There was a problem saving your data. "
+            "Please try again later or contact an administrator.\n\n"
+            "Type /start to try again."
         )
         logger.error(f"Falha ao registrar usuário {user.id} com Twitter @{twitter_username}")
     
@@ -161,8 +161,8 @@ async def receive_twitter_username(update: Update, context: ContextTypes.DEFAULT
 async def cancel_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel the registration process."""
     await update.message.reply_text(
-        "❌ Registro cancelado.\n\n"
-        "Digite /start quando quiser se registrar.",
+        "❌ Registration cancelled.\n\n"
+        "Type /start when you want to register.",
         reply_markup=ReplyKeyboardRemove()
     )
     return ConversationHandler.END
