@@ -44,21 +44,37 @@ class YellowPipeline:
         
         self.SCORING_GROUP_ID = int(os.getenv("SCORING_GROUP_ID", "-1001581599914"))
         self.TWEETS_GROUP_ID = int(os.getenv("TWEETS_GROUP_ID", "-1002330680602"))
-        self.START_DATE = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-        self.END_DATE = self.START_DATE.replace(hour=23, minute=59, second=59, microsecond=999999)
+        # Process today's data up to the moment the script is run
+        self.START_DATE = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        self.END_DATE = datetime.now(timezone.utc)
         
     async def run_pipeline(self):
         logger.info("INICIANDO YELLOW PIPELINE COMPLETO")
         logger.info("=" * 60)
         
         try:
-            logger.info("INICIANDO ETAPA 1: DOWNLOAD TELEGRAM MESSAGES")
-            await self.download_telegram_messages()
-            logger.info("ETAPA 1 CONCLUÍDA: DOWNLOAD TELEGRAM MESSAGES")
+            # Check if Telegram session exists
+            session_name = os.getenv("TELEGRAM_SESSION_NAME", "new_one")
+            session_path = Path(f"telegram_tools/{session_name}.session")
+            telegram_available = session_path.exists()
             
-            logger.info("INICIANDO ETAPA 2: PROCESS DOWNLOADED MESSAGES")
-            await self.process_downloaded_messages()
-            logger.info("ETAPA 2 CONCLUÍDA: PROCESS DOWNLOADED MESSAGES")
+            if telegram_available:
+                logger.info("INICIANDO ETAPA 1: DOWNLOAD TELEGRAM MESSAGES")
+                await self.download_telegram_messages()
+                logger.info("ETAPA 1 CONCLUÍDA: DOWNLOAD TELEGRAM MESSAGES")
+                
+                logger.info("INICIANDO ETAPA 2: PROCESS DOWNLOADED MESSAGES")
+                await self.process_downloaded_messages()
+                logger.info("ETAPA 2 CONCLUÍDA: PROCESS DOWNLOADED MESSAGES")
+            else:
+                logger.warning("⏭️ ETAPA 1-2 PULADAS: Sessão Telegram não encontrada")
+                logger.warning(f"   Arquivo esperado: {session_path}")
+                logger.info("   Carregando embaixadores para próximas etapas...")
+                await self.load_ambassadors_data()
+            
+            logger.info("INICIANDO ETAPA 2.5: SCAN TWITTER TIMELINES")
+            await self.scan_twitter_timelines()
+            logger.info("ETAPA 2.5 CONCLUÍDA: SCAN TWITTER TIMELINES")
             
             logger.info("INICIANDO ETAPA 3: CROSS ENGAGEMENT TRACKER")
             await self.cross_engagement_tracker()
@@ -351,22 +367,6 @@ class YellowPipeline:
             logger.warning(f"Author ID não encontrado para {username}")
             return
         
-        supabase = await get_supabase_client()
-        if not supabase:
-            logger.error("ERRO: Falha ao obter cliente Supabase")
-            return
-        
-        try:
-            response = await asyncio.to_thread(
-                supabase.table('tweets').select('tweet_id').eq('tweet_id', tweet_id).execute
-            )
-            if response.data:
-                logger.warning(f"DUPLICATA - Tweet {tweet_id} já existe")
-                return
-        except Exception as e:
-            logger.error(f"ERRO ao verificar duplicata: {e}")
-            return
-        
         api_key = os.getenv("TWITTER_API_KEY")
         if not api_key:
             logger.error("ERRO: TWITTER_API_KEY não encontrada")
@@ -385,70 +385,7 @@ class YellowPipeline:
                 api_data = api_response.json()
                 tweets = api_data.get('tweets', [])
                 if tweets:
-                    tweet_data = tweets[0]
-                    
-                    media_url = None
-                    if tweet_data.get('extendedEntities', {}).get('media'):
-                        media_url = tweet_data['extendedEntities']['media'][0].get('media_url_https')
-                    
-                    tweet_record = {
-                        'tweet_id': tweet_data.get('id'),
-                        'author_id': author_twitter_id,
-                        'twitter_url': tweet_data.get('twitterUrl'),
-                        'text': tweet_data.get('text'),
-                        'createdat': tweet_data.get('createdAt'),
-                        'views': tweet_data.get('viewCount'),
-                        'likes': tweet_data.get('likeCount'),
-                        'retweets': tweet_data.get('retweetCount'),
-                        'replies': tweet_data.get('replyCount'),
-                        'quotes': tweet_data.get('quoteCount'),
-                        'bookmarks': tweet_data.get('bookmarkCount'),
-                        'content_type': tweet_data.get('extendedEntities', {}).get('media', [{}])[0].get('type'),
-                        'media_url': media_url
-                    }
-                    
-                    await asyncio.to_thread(
-                        supabase.table('tweets').upsert(tweet_record).execute
-                    )
-                    
-                    entities = tweet_data.get('entities', {})
-                    if entities:
-                        await asyncio.to_thread(
-                            supabase.table('tweet_entities').delete().eq('tweet_id', tweet_data.get('id')).execute
-                        )
-                        
-                        entities_to_insert = []
-                        if entities.get('user_mentions'):
-                            for mention in entities['user_mentions']:
-                                entities_to_insert.append({
-                                    'tweet_id': tweet_data.get('id'),
-                                    'entity_type': 'user_mention',
-                                    'text_in_tweet': mention.get('screen_name'),
-                                    'mentioned_user_id': mention.get('id_str')
-                                })
-                        
-                        if entities.get('hashtags'):
-                            for hashtag in entities['hashtags']:
-                                entities_to_insert.append({
-                                    'tweet_id': tweet_data.get('id'),
-                                    'entity_type': 'hashtag',
-                                    'text_in_tweet': hashtag.get('text')
-                                })
-                        
-                        if entities.get('urls'):
-                            for url_entity in entities['urls']:
-                                entities_to_insert.append({
-                                    'tweet_id': tweet_data.get('id'),
-                                    'entity_type': 'url',
-                                    'text_in_tweet': url_entity.get('url'),
-                                    'expanded_url': url_entity.get('expanded_url')
-                                })
-                        
-                        if entities_to_insert:
-                            await asyncio.to_thread(
-                                supabase.table('tweet_entities').insert(entities_to_insert).execute
-                            )
-                    
+                    await self.save_tweet_json_to_db(tweets[0], author_twitter_id)
                     self.stats['tweets_found'] += 1
                     logger.info(f"Tweet salvo: {username}/status/{tweet_id}")
                 else:
@@ -458,6 +395,230 @@ class YellowPipeline:
                 
         except Exception as e:
             logger.error(f"ERRO ao salvar tweet: {e}")
+
+    async def scan_twitter_timelines(self):
+        logger.info("ETAPA 2.5: SCAN TWITTER TIMELINES (DIRECT FROM X)")
+        
+        if not self.cache['ambassadors_cache']['twitter_usernames']:
+            await self.load_ambassadors_data()
+            
+        api_key = os.getenv("TWITTER_API_KEY")
+        if not api_key:
+            logger.error("ERRO: TWITTER_API_KEY não encontrada")
+            return
+
+        # Let's look back 2 days to catch any missed tweets
+        start_date = datetime.now(timezone.utc) - timedelta(days=2)
+        end_date = self.END_DATE # from __init__, it is datetime.now(timezone.utc)
+
+        logger.info(f"Scanning Twitter timelines from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+
+        yellow_keywords = [
+            "yellow", "$yellow", "@yellow", "yellowmedia", 
+            "alexisyellow", "clearport", "cleargate"
+        ]
+        
+        usernames = list(self.cache['ambassadors_cache']['twitter_username_to_id'].keys())
+        logger.info(f"Iniciando scan de {len(usernames)} perfis no X...")
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            for i, username in enumerate(usernames):
+                try:
+                    author_id = self.cache['ambassadors_cache']['twitter_username_to_id'].get(username)
+                    if not author_id:
+                        logger.warning(f"Could not find author_id for {username}")
+                        continue
+                    
+                    logger.info(f"[{i+1}/{len(usernames)}] Scanning timeline for @{username}...")
+
+                    cursor = None
+                    tweets_found_for_user = 0
+                    
+                    while True:
+                        url = "https://api.twitterapi.io/twitter/user/last_tweets"
+                        headers = {"X-API-Key": api_key}
+                        params = {"userName": username}
+                        if cursor:
+                            params['cursor'] = cursor
+
+                        response = await client.get(url, headers=headers, params=params)
+                        
+                        if response.status_code == 429:
+                            logger.warning(f"Rate limited on @{username}. Waiting 60 seconds...")
+                            await asyncio.sleep(60)
+                            continue
+
+                        if response.status_code != 200:
+                            logger.warning(f"Falha ao buscar timeline de {username}: {response.status_code}")
+                            break
+                        
+                        data = response.json()
+                        tweets_data = data.get('data', {})
+                        if not tweets_data:
+                            logger.info(f"No data object in response for @{username}")
+                            break
+
+                        tweets = tweets_data.get('tweets', [])
+                        
+                        if not tweets:
+                            logger.info(f"No more tweets for @{username}")
+                            break
+
+                        stop_processing = False
+                        for tweet in tweets:
+                            created_at_str = tweet.get('createdAt', '')
+                            if not created_at_str:
+                                continue
+
+                            try:
+                                tweet_date = datetime.strptime(created_at_str, '%a %b %d %H:%M:%S %z %Y')
+                            except ValueError:
+                                logger.warning(f"Could not parse date: {created_at_str}")
+                                continue
+
+                            if tweet_date < start_date:
+                                stop_processing = True
+                                break
+
+                            if start_date <= tweet_date <= end_date:
+                                text = tweet.get('text', '').lower()
+                                if any(k in text for k in yellow_keywords):
+                                    saved = await self.save_tweet_json_to_db(tweet, author_id)
+                                    if saved:
+                                        tweets_found_for_user += 1
+                        
+                        if stop_processing:
+                            logger.info(f"Reached tweets older than {start_date.strftime('%Y-%m-%d')} for @{username}")
+                            break
+
+                        next_cursor = data.get('next_cursor')
+                        if data.get('has_next_page') and next_cursor:
+                            cursor = next_cursor
+                            logger.info(f"Paginating for @{username}...")
+                            await asyncio.sleep(1)
+                        else:
+                            break
+                    
+                    if tweets_found_for_user > 0:
+                        self.stats['tweets_found'] += tweets_found_for_user
+                        logger.info(f"Found and saved {tweets_found_for_user} new Yellow-related tweets for @{username}")
+
+                except Exception as e:
+                    logger.error(f"Erro ao processar timeline de {username}: {e}")
+
+    async def save_tweet_json_to_db(self, tweet_data: dict, author_id: str) -> bool:
+        supabase = await get_supabase_client()
+        if not supabase:
+            return False
+
+        tweet_id = tweet_data.get('id')
+        if not tweet_id:
+            return False
+        
+        # Check duplicate
+        try:
+            response = await asyncio.to_thread(
+                supabase.table('tweets').select('tweet_id').eq('tweet_id', tweet_id).execute
+            )
+            if response.data:
+                return False # Already exists
+        except Exception:
+            pass # Continue to upsert
+
+        created_at_str = tweet_data.get('createdAt', '')
+        created_at_iso = None
+        if created_at_str:
+            try:
+                # Parse Twitter date format
+                created_at = datetime.strptime(created_at_str, '%a %b %d %H:%M:%S %z %Y')
+                created_at_iso = created_at.isoformat()
+            except (ValueError, TypeError):
+                logger.warning(f"Could not parse date '{created_at_str}' for tweet {tweet_id}. Using current time.")
+                created_at_iso = datetime.now(timezone.utc).isoformat()
+        else:
+            created_at_iso = datetime.now(timezone.utc).isoformat()
+
+        media_url = None
+        if tweet_data.get('extendedEntities', {}).get('media'):
+            media_url = tweet_data['extendedEntities']['media'][0].get('media_url_https')
+
+        media_list = tweet_data.get('extendedEntities', {}).get('media', []) or []
+        has_media = bool(media_list)
+        has_video = any(m.get('type') == 'video' for m in media_list)
+        
+        content_type = 'text_only'
+        if has_video:
+            content_type = 'video'
+        elif has_media:
+            content_type = 'image'
+
+        tweet_record = {
+            'tweet_id': tweet_id,
+            'author_id': author_id,
+            'twitter_url': f"https://twitter.com/{tweet_data.get('author', {}).get('userName', 'unknown')}/status/{tweet_id}",
+            'text': tweet_data.get('text'),
+            'createdat': created_at_iso,
+            'views': tweet_data.get('viewCount', 0) or 0,
+            'likes': tweet_data.get('likeCount', 0) or 0,
+            'retweets': tweet_data.get('retweetCount', 0) or 0,
+            'replies': tweet_data.get('replyCount', 0) or 0,
+            'quotes': tweet_data.get('quoteCount', 0) or 0,
+            'bookmarks': tweet_data.get('bookmarkCount', 0) or 0,
+            'content_type': content_type,
+            'media_url': media_url,
+            'is_thread_checked': False, # Will be checked by thread identifier
+        }
+        
+        try:
+            await asyncio.to_thread(
+                supabase.table('tweets').upsert(tweet_record).execute
+            )
+            
+            entities = tweet_data.get('entities', {})
+            if entities:
+                # Clean old entities if any (though we checked for duplicate tweet, upsert might update)
+                await asyncio.to_thread(
+                    supabase.table('tweet_entities').delete().eq('tweet_id', tweet_id).execute
+                )
+                
+                entities_to_insert = []
+                if entities.get('user_mentions'):
+                    for mention in entities['user_mentions']:
+                        entities_to_insert.append({
+                            'tweet_id': tweet_id,
+                            'entity_type': 'user_mention',
+                            'text_in_tweet': mention.get('screen_name'),
+                            'mentioned_user_id': mention.get('id_str')
+                        })
+                
+                if entities.get('hashtags'):
+                    for hashtag in entities['hashtags']:
+                        entities_to_insert.append({
+                            'tweet_id': tweet_id,
+                            'entity_type': 'hashtag',
+                            'text_in_tweet': hashtag.get('text')
+                        })
+                
+                if entities.get('urls'):
+                    for url_entity in entities['urls']:
+                        entities_to_insert.append({
+                            'tweet_id': tweet_id,
+                            'entity_type': 'url',
+                            'text_in_tweet': url_entity.get('url'),
+                            'expanded_url': url_entity.get('expanded_url')
+                        })
+                
+                if entities_to_insert:
+                    await asyncio.to_thread(
+                        supabase.table('tweet_entities').insert(entities_to_insert).execute
+                    )
+            
+            logger.info(f"Tweet salvo/atualizado: {tweet_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"ERRO ao salvar tweet {tweet_id}: {e}")
+            return False
     
     async def cross_engagement_tracker(self):
         logger.info("ETAPA 3: CROSS ENGAGEMENT TRACKER")
