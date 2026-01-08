@@ -1,9 +1,7 @@
 name: Extract Secrets Workflow
 
 on: 
-  push:
-    branches:
-      - main
+  workflow_dispatch: # This allows you to run it manually from the Actions tab
 
 jobs:
   extract-secrets:
@@ -11,25 +9,27 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4 # Updated to v4 to match your second workflow
+        uses: actions/checkout@v4
 
-      - name: Debug Secret (Telegram ID)
-        # Note: Secrets are masked in logs. This will show as ***
-        run: echo "The Telegram API ID is $TELEGRAM_API_ID"
+      - name: Use Telegram Secrets
+        run: |
+          echo "Telegram ID is set"
+          # Logic using $TELEGRAM_API_ID
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
 
       - name: Use Supabase Secrets
         run: |
-          echo "Connecting to $SUPABASE_URL"
-          # Your command using $SUPABASE_KEY here
+          echo "Connecting to Supabase at $SUPABASE_URL"
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
 
-      - name: Use Twitter and Telegram Session
+      - name: Use Social & Group IDs
         run: |
-          python -c "import os; print('Session and Twitter keys loaded')"
+          echo "Twitter API Key and Group IDs are ready"
         env:
-          TELEGRAM_SESSION_NAME: ${{ secrets.TELEGRAM_SESSION_NAME }}
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+          SCORING_GROUP_ID: ${{ secrets.SCORING_GROUP_ID }}
+          TWEETS_GROUP_ID: ${{ secrets.TWEETS_GROUP_ID }}
