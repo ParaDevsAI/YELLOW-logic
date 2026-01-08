@@ -1,0 +1,35 @@
+name: Extract Secrets Workflow
+
+on: 
+  push:
+    branches:
+      - main
+
+jobs:
+  extract-secrets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4 # Updated to v4 to match your second workflow
+
+      - name: Debug Secret (Telegram ID)
+        # Note: Secrets are masked in logs. This will show as ***
+        run: echo "The Telegram API ID is $TELEGRAM_API_ID"
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+
+      - name: Use Supabase Secrets
+        run: |
+          echo "Connecting to $SUPABASE_URL"
+          # Your command using $SUPABASE_KEY here
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+      - name: Use Twitter and Telegram Session
+        run: |
+          python -c "import os; print('Session and Twitter keys loaded')"
+        env:
+          TELEGRAM_SESSION_NAME: ${{ secrets.TELEGRAM_SESSION_NAME }}
+          TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
