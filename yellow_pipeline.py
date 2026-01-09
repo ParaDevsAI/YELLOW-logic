@@ -466,6 +466,12 @@ class YellowPipeline:
 
                         stop_processing = False
                         for tweet in tweets:
+                            text = tweet.get('text', '')
+                            
+                            # Skip retweets
+                            if text.startswith('RT '):
+                                continue
+                            
                             created_at_str = tweet.get('createdAt', '')
                             if not created_at_str:
                                 continue
